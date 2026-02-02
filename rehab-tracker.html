@@ -1,0 +1,1353 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>康复追踪</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #F5F5F5;
+            color: #333;
+            padding-bottom: 70px;
+        }
+
+        /* 顶部标题栏 */
+        .header {
+            background: #5B9BD5;
+            color: white;
+            padding: 15px 20px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        /* 页面容器 */
+        .page {
+            display: none;
+            padding: 20px;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        /* 卡片 */
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        /* 大按钮 */
+        .btn-primary {
+            background: #5B9BD5;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: block;
+            margin: 20px auto;
+            width: 200px;
+        }
+
+        .btn-primary:active {
+            opacity: 0.8;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #5B9BD5;
+            border: 2px solid #5B9BD5;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-block;
+            margin: 5px;
+        }
+
+        .btn-secondary:active {
+            background: #E8F4F8;
+        }
+
+        /* 首页样式 */
+        .date-display {
+            text-align: center;
+            font-size: 16px;
+            color: #666;
+            margin: 10px 0;
+        }
+
+        .streak-info {
+            text-align: center;
+            margin: 20px 0;
+            font-size: 14px;
+            color: #70AD47;
+        }
+
+        .streak-number {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        /* 提醒列表 */
+        .reminder-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .reminder-item:last-child {
+            border-bottom: none;
+        }
+
+        .checkbox {
+            width: 22px;
+            height: 22px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            margin-right: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .checkbox.checked {
+            background: #70AD47;
+            border-color: #70AD47;
+            color: white;
+        }
+
+        /* 打卡页样式 */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .slider {
+            flex: 1;
+            height: 8px;
+            border-radius: 4px;
+            background: #ddd;
+            appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #5B9BD5;
+            cursor: pointer;
+        }
+
+        .score-display {
+            font-size: 18px;
+            font-weight: bold;
+            color: #5B9BD5;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .radio-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .radio-btn {
+            flex: 1;
+            min-width: 70px;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .radio-btn.selected {
+            border-color: #5B9BD5;
+            background: #E8F4F8;
+            color: #5B9BD5;
+            font-weight: 600;
+        }
+
+        .counter {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .counter-btn {
+            width: 44px;
+            height: 44px;
+            border: 2px solid #ddd;
+            border-radius: 50%;
+            background: white;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .counter-value {
+            font-size: 24px;
+            font-weight: bold;
+            min-width: 40px;
+            text-align: center;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #5B9BD5;
+        }
+
+        /* 记录页样式 */
+        .record-item {
+            padding: 15px 0;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+
+        .record-item:last-child {
+            border-bottom: none;
+        }
+
+        .record-date {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 5px;
+        }
+
+        .record-score {
+            font-size: 14px;
+            font-weight: 600;
+            color: #5B9BD5;
+        }
+
+        .record-details {
+            font-size: 13px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .record-notes {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+            font-style: italic;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        /* 方案页样式 */
+        .section {
+            margin-bottom: 15px;
+        }
+
+        .section-title {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .section-content {
+            background: white;
+            margin-top: 10px;
+            padding: 15px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            line-height: 1.6;
+            display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .section-content.show {
+            display: block;
+        }
+
+        .section-item {
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .section-item:last-child {
+            border-bottom: none;
+        }
+
+        /* 底部导航 */
+        .tabbar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 0;
+            padding-bottom: max(8px, env(safe-area-inset-bottom));
+        }
+
+        .tab-item {
+            flex: 1;
+            text-align: center;
+            font-size: 11px;
+            color: #999;
+            cursor: pointer;
+            padding: 5px 0;
+        }
+
+        .tab-item.active {
+            color: #5B9BD5;
+        }
+
+        .tab-icon {
+            font-size: 24px;
+            margin-bottom: 2px;
+        }
+
+        /* 统计图表 */
+        .chart-container {
+            height: 250px;
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .chart-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .chart-wrapper {
+            height: 200px;
+            position: relative;
+        }
+
+        /* 统计数据 */
+        .stat-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+
+        .stat-icon {
+            font-size: 16px;
+            margin-right: 12px;
+        }
+
+        .stat-label {
+            flex: 1;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        /* 我的页面 */
+        .user-card {
+            text-align: center;
+            padding: 30px 20px;
+        }
+
+        .user-avatar {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .user-name {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .user-days {
+            font-size: 13px;
+            color: #999;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px 0;
+            cursor: pointer;
+        }
+
+        .menu-item:last-child {
+            padding-bottom: 0;
+        }
+
+        .menu-text {
+            font-size: 15px;
+            color: #333;
+        }
+
+        .menu-arrow {
+            font-size: 14px;
+            color: #999;
+        }
+
+        .divider {
+            height: 1px;
+            background: #eee;
+            margin: 10px 0;
+        }
+
+        .footer-text {
+            font-size: 12px;
+            color: #999;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        /* Toast 提示 */
+        .toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 1000;
+            display: none;
+        }
+
+        .toast.show {
+            display: block;
+        }
+
+        /* 开关 */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 28px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider-switch {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 28px;
+        }
+
+        .slider-switch:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider-switch {
+            background-color: #5B9BD5;
+        }
+
+        input:checked + .slider-switch:before {
+            transform: translateX(22px);
+        }
+    </style>
+</head>
+<body>
+    <!-- Toast 提示 -->
+    <div class="toast" id="toast"></div>
+
+    <!-- 顶部标题栏 -->
+    <div class="header" id="header">康复追踪</div>
+
+    <!-- 首页 -->
+    <div class="page active" id="page-home">
+        <div class="date-display" id="currentDate"></div>
+
+        <div class="card">
+            <div style="text-align: center; padding: 20px 0;">
+                <div style="font-size: 16px; margin-bottom: 15px;" id="checkinPrompt">今天打卡了吗？</div>
+                <button class="btn-primary" onclick="showPage('checkin')">立即打卡</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="streak-info">
+                <div>已连续坚持</div>
+                <div class="streak-number" id="streakDays">0 天</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="form-label">今日提醒</div>
+            <div class="reminder-item">
+                <div class="checkbox" onclick="toggleCheck(this)" data-reminder="chinTuck">✓</div>
+                <div>
+                    <div style="font-weight: 600;">收颌训练</div>
+                    <div style="font-size: 12px; color: #999;">每小时一次</div>
+                </div>
+            </div>
+            <div class="reminder-item">
+                <div class="checkbox" onclick="toggleCheck(this)" data-reminder="thoracic">✓</div>
+                <div>
+                    <div style="font-weight: 600;">胸椎伸展</div>
+                    <div style="font-size: 12px; color: #999;">15:00</div>
+                </div>
+            </div>
+            <div class="reminder-item">
+                <div class="checkbox" onclick="toggleCheck(this)" data-reminder="breathing">✓</div>
+                <div>
+                    <div style="font-weight: 600;">睡前呼吸</div>
+                    <div style="font-size: 12px; color: #999;">22:00</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 打卡页 -->
+    <div class="page" id="page-checkin">
+        <div class="card">
+            <div class="form-group">
+                <label class="form-label">早起清醒评分</label>
+                <div class="slider-container">
+                    <input type="range" class="slider" min="1" max="10" value="7" id="scoreSlider" oninput="updateScore()">
+                    <div class="score-display" id="scoreDisplay">7</div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">脑鸣音量</label>
+                <div class="radio-group" id="volumeGroup">
+                    <div class="radio-btn" onclick="selectRadio('volumeGroup', this, 0)">无</div>
+                    <div class="radio-btn" onclick="selectRadio('volumeGroup', this, 1)">轻微</div>
+                    <div class="radio-btn selected" onclick="selectRadio('volumeGroup', this, 2)">中等</div>
+                    <div class="radio-btn" onclick="selectRadio('volumeGroup', this, 3)">严重</div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">脑鸣频率</label>
+                <div class="radio-group" id="freqGroup">
+                    <div class="radio-btn" onclick="selectRadio('freqGroup', this, 0)">无</div>
+                    <div class="radio-btn selected" onclick="selectRadio('freqGroup', this, 1)">偶尔</div>
+                    <div class="radio-btn" onclick="selectRadio('freqGroup', this, 2)">持续</div>
+                    <div class="radio-btn" onclick="selectRadio('freqGroup', this, 3)">整夜</div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">膝盖弹响次数</label>
+                <div class="counter">
+                    <div class="counter-btn" onclick="updateCounter(-1)">−</div>
+                    <div class="counter-value" id="counterValue">5</div>
+                    <div class="counter-btn" onclick="updateCounter(1)">+</div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">备注（洗鼻/重力毯/特殊情况）</label>
+                <textarea id="notesInput" placeholder="记录今天的情况..."></textarea>
+            </div>
+
+            <button class="btn-primary" onclick="saveCheckin()">保存打卡</button>
+        </div>
+    </div>
+
+    <!-- 记录页 -->
+    <div class="page" id="page-history">
+        <div class="card" id="recordsCard">
+            <div class="empty">
+                <div class="empty-icon">📋</div>
+                <div>还没有打卡记录</div>
+                <div style="font-size: 12px; margin-top: 10px;">开始第一次打卡吧</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 统计页 -->
+    <div class="page" id="page-stats">
+        <div class="chart-container">
+            <div class="chart-title">清醒评分趋势（14天）</div>
+            <div class="chart-wrapper">
+                <canvas id="scoreChart"></canvas>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-title">脑鸣变化趋势</div>
+            <div class="chart-wrapper">
+                <canvas id="tinnitusChart"></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="stat-item">
+                <span class="stat-icon" style="color: #70AD47;">✓</span>
+                <span class="stat-label">平均清醒评分</span>
+                <span class="stat-value" id="avgScore">-</span>
+            </div>
+            <div class="divider"></div>
+            <div class="stat-item">
+                <span class="stat-icon" style="color: #5B9BD5;">●</span>
+                <span class="stat-label">最长连续天数</span>
+                <span class="stat-value" id="maxStreakDays">0</span>
+            </div>
+            <div class="divider"></div>
+            <div class="stat-item">
+                <span class="stat-icon" style="color: #999;">●</span>
+                <span class="stat-label">总打卡天数</span>
+                <span class="stat-value" id="totalDays">0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 方案页 -->
+    <div class="page" id="page-plan">
+        <div class="section">
+            <div class="section-title" onclick="toggleSection(this)">
+                <span>💼 办公环境管理</span>
+                <span>▼</span>
+            </div>
+            <div class="section-content">
+                <div class="section-item"><strong>工位改造：</strong>垫高显示器，视线平齐</div>
+                <div class="section-item"><strong>温度防御：</strong>户外带围巾，下肢保暖</div>
+                <div class="section-item"><strong>噪音管理：</strong>主动降噪耳机</div>
+                <div class="section-item"><strong>沐浴调节：</strong>睡前2小时，温凉水收尾</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title" onclick="toggleSection(this)">
+                <span>🏃 每日训练</span>
+                <span>▼</span>
+            </div>
+            <div class="section-content">
+                <div class="section-item"><strong>收颌训练：</strong>每小时1组×10次（向后收下巴）</div>
+                <div class="section-item"><strong>胸椎伸展：</strong>下午3点，利用椅背向后伸展</div>
+                <div class="section-item"><strong>股四头肌松解：</strong>睡前泡沫轴滚大腿前侧</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title" onclick="toggleSection(this)">
+                <span>😴 睡眠优化</span>
+                <span>▼</span>
+            </div>
+            <div class="section-content">
+                <div class="section-item"><strong>物理干预：</strong>生理盐水洗鼻 + 鼻贴</div>
+                <div class="section-item"><strong>重力干预：</strong>10%体重重力毯</div>
+                <div class="section-item"><strong>体位干预：</strong>侧卧，双腿夹软枕</div>
+                <div class="section-item"><strong>神经调息：</strong>4-7-8呼吸法（吸4憋7呼8）</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title" onclick="toggleSection(this)">
+                <span>⚠️ 专家提醒</span>
+                <span>▼</span>
+            </div>
+            <div class="section-content">
+                <div class="section-item">• 调整反应：脑鸣波动是正常的</div>
+                <div class="section-item">• 循序渐进：求高频次，不求幅度大</div>
+                <div class="section-item">• 长期预期：提升耐受度和舒适度</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 我的页 -->
+    <div class="page" id="page-profile">
+        <div class="card user-card">
+            <div class="user-avatar">👤</div>
+            <div class="user-name">康复者</div>
+            <div class="user-days" id="profileDays">坚持记录第 0 天</div>
+        </div>
+
+        <div class="card">
+            <div class="menu-item" onclick="showPage('stats')">
+                <span class="menu-text">数据统计</span>
+                <span class="menu-arrow">→</span>
+            </div>
+            <div class="divider"></div>
+            <div class="menu-item" onclick="exportData()">
+                <span class="menu-text">导出数据</span>
+                <span class="menu-arrow">→</span>
+            </div>
+            <div class="divider"></div>
+            <div class="menu-item" onclick="showAbout()">
+                <span class="menu-text">关于方案</span>
+                <span class="menu-arrow">→</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="menu-item">
+                <span class="menu-text">提醒设置</span>
+                <label class="switch">
+                    <input type="checkbox" id="reminderSwitch" checked onchange="toggleReminder()">
+                    <span class="slider-switch"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="footer-text">
+                康复追踪 v1.0<br>
+                数据保存在浏览器本地
+            </div>
+        </div>
+    </div>
+
+    <!-- 底部导航 -->
+    <div class="tabbar">
+        <div class="tab-item active" onclick="showPage('home')">
+            <div class="tab-icon">🏠</div>
+            <div>首页</div>
+        </div>
+        <div class="tab-item" onclick="showPage('history')">
+            <div class="tab-icon">📋</div>
+            <div>记录</div>
+        </div>
+        <div class="tab-item" onclick="showPage('plan')">
+            <div class="tab-icon">📖</div>
+            <div>方案</div>
+        </div>
+        <div class="tab-item" onclick="showPage('profile')">
+            <div class="tab-icon">👤</div>
+            <div>我的</div>
+        </div>
+    </div>
+
+    <script>
+        // ============= 数据存储 =============
+        const STORAGE_KEY_RECORDS = 'rehab_records';
+        const STORAGE_KEY_SETTINGS = 'rehab_settings';
+        const STORAGE_KEY_REMINDERS = 'rehab_reminders';
+
+        // 获取所有记录
+        function getRecords() {
+            const data = localStorage.getItem(STORAGE_KEY_RECORDS);
+            return data ? JSON.parse(data) : [];
+        }
+
+        // 保存记录
+        function saveRecord(record) {
+            let records = getRecords();
+            const today = record.date;
+
+            // 检查今天是否已有记录
+            const existingIndex = records.findIndex(r => r.date === today);
+
+            if (existingIndex >= 0) {
+                // 更新今天的记录
+                records[existingIndex] = record;
+            } else {
+                // 添加新记录
+                records.unshift(record);
+            }
+
+            localStorage.setItem(STORAGE_KEY_RECORDS, JSON.stringify(records));
+            return records;
+        }
+
+        // 获取今天的记录
+        function getTodayRecord() {
+            const records = getRecords();
+            const today = new Date().toISOString().split('T')[0];
+            return records.find(r => r.date === today);
+        }
+
+        // 计算连续打卡天数
+        function getStreakDays() {
+            const records = getRecords();
+            if (records.length === 0) return 0;
+
+            let streak = 0;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            for (let i = 0; i < records.length; i++) {
+                const recordDate = new Date(records[i].date);
+                recordDate.setHours(0, 0, 0, 0);
+
+                const diffDays = Math.floor((today - recordDate) / (1000 * 60 * 60 * 24));
+
+                if (diffDays === i) {
+                    streak++;
+                } else {
+                    break;
+                }
+            }
+
+            return streak;
+        }
+
+        // 获取设置
+        function getSettings() {
+            const data = localStorage.getItem(STORAGE_KEY_SETTINGS);
+            return data ? JSON.parse(data) : { reminderEnabled: true };
+        }
+
+        // 保存设置
+        function saveSettings(settings) {
+            localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(settings));
+        }
+
+        // 获取提醒状态
+        function getReminders() {
+            const data = localStorage.getItem(STORAGE_KEY_REMINDERS);
+            return data ? JSON.parse(data) : {};
+        }
+
+        // 保存提醒状态
+        function saveReminders(reminders) {
+            localStorage.setItem(STORAGE_KEY_REMINDERS, JSON.stringify(reminders));
+        }
+
+        // ============= UI 交互 =============
+        let counterValue = 5;
+        let tinnitusVolume = 2;
+        let tinnitusFreq = 1;
+
+        // 更新当前日期
+        function updateCurrentDate() {
+            const now = new Date();
+            const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
+            document.getElementById('currentDate').textContent = now.toLocaleDateString('zh-CN', options);
+        }
+
+        // 切换页面
+        function showPage(pageName) {
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+
+            const targetPage = document.getElementById('page-' + pageName);
+            if (targetPage) {
+                targetPage.classList.add('active');
+            }
+
+            const titles = {
+                'home': '康复追踪',
+                'checkin': '每日打卡',
+                'history': '历史记录',
+                'stats': '数据统计',
+                'plan': '康复方案',
+                'profile': '我的'
+            };
+            document.getElementById('header').textContent = titles[pageName] || '康复追踪';
+
+            document.querySelectorAll('.tab-item').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            const tabMap = {
+                'home': 0,
+                'history': 1,
+                'plan': 2,
+                'profile': 3,
+                'checkin': 0,
+                'stats': 1
+            };
+            const tabs = document.querySelectorAll('.tab-item');
+            if (tabs[tabMap[pageName]]) {
+                tabs[tabMap[pageName]].classList.add('active');
+            }
+
+            // 页面切换时刷新数据
+            if (pageName === 'home') {
+                loadHomePage();
+            } else if (pageName === 'history') {
+                loadRecords();
+            } else if (pageName === 'stats') {
+                loadStats();
+            } else if (pageName === 'profile') {
+                loadProfile();
+            } else if (pageName === 'checkin') {
+                loadCheckinPage();
+            }
+        }
+
+        // 加载首页数据
+        function loadHomePage() {
+            const streakDays = getStreakDays();
+            document.getElementById('streakDays').textContent = streakDays + ' 天';
+
+            const todayRecord = getTodayRecord();
+            if (todayRecord) {
+                document.getElementById('checkinPrompt').textContent = '今天已打卡 ✓';
+            } else {
+                document.getElementById('checkinPrompt').textContent = '今天打卡了吗？';
+            }
+
+            // 加载提醒状态
+            const reminders = getReminders();
+            document.querySelectorAll('.reminder-item .checkbox').forEach(checkbox => {
+                const reminderType = checkbox.dataset.reminder;
+                if (reminders[reminderType]) {
+                    checkbox.classList.add('checked');
+                } else {
+                    checkbox.classList.remove('checked');
+                }
+            });
+        }
+
+        // 加载打卡页面
+        function loadCheckinPage() {
+            const todayRecord = getTodayRecord();
+            if (todayRecord) {
+                // 加载今天的记录
+                document.getElementById('scoreSlider').value = todayRecord.score;
+                document.getElementById('scoreDisplay').textContent = todayRecord.score;
+                counterValue = todayRecord.kneeClicks || 0;
+                document.getElementById('counterValue').textContent = counterValue;
+                tinnitusVolume = todayRecord.tinnitusVolume || 2;
+                tinnitusFreq = todayRecord.tinnitusFreq || 1;
+                document.getElementById('notesInput').value = todayRecord.notes || '';
+
+                // 更新单选按钮状态
+                updateRadioButtons('volumeGroup', tinnitusVolume);
+                updateRadioButtons('freqGroup', tinnitusFreq);
+            } else {
+                // 重置表单
+                document.getElementById('scoreSlider').value = 7;
+                document.getElementById('scoreDisplay').textContent = '7';
+                counterValue = 5;
+                document.getElementById('counterValue').textContent = counterValue;
+                tinnitusVolume = 2;
+                tinnitusFreq = 1;
+                document.getElementById('notesInput').value = '';
+                updateRadioButtons('volumeGroup', 2);
+                updateRadioButtons('freqGroup', 1);
+            }
+        }
+
+        // 更新单选按钮状态
+        function updateRadioButtons(groupId, selectedIndex) {
+            const group = document.getElementById(groupId);
+            group.querySelectorAll('.radio-btn').forEach((btn, index) => {
+                if (index === selectedIndex) {
+                    btn.classList.add('selected');
+                } else {
+                    btn.classList.remove('selected');
+                }
+            });
+        }
+
+        // 更新评分
+        function updateScore() {
+            const slider = document.getElementById('scoreSlider');
+            document.getElementById('scoreDisplay').textContent = slider.value;
+        }
+
+        // 选择单选按钮
+        function selectRadio(groupId, element, value) {
+            const group = document.getElementById(groupId);
+            group.querySelectorAll('.radio-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            element.classList.add('selected');
+
+            if (groupId === 'volumeGroup') {
+                tinnitusVolume = value;
+            } else if (groupId === 'freqGroup') {
+                tinnitusFreq = value;
+            }
+        }
+
+        // 更新计数器
+        function updateCounter(delta) {
+            counterValue = Math.max(0, counterValue + delta);
+            document.getElementById('counterValue').textContent = counterValue;
+        }
+
+        // 切换复选框
+        function toggleCheck(element) {
+            element.classList.toggle('checked');
+            const reminderType = element.dataset.reminder;
+            const reminders = getReminders();
+            reminders[reminderType] = element.classList.contains('checked');
+            saveReminders(reminders);
+        }
+
+        // 切换折叠区域
+        function toggleSection(element) {
+            const content = element.nextElementSibling;
+            content.classList.toggle('show');
+            const arrow = element.querySelector('span:last-child');
+            arrow.textContent = content.classList.contains('show') ? '▲' : '▼';
+        }
+
+        // 保存打卡
+        function saveCheckin() {
+            const now = new Date();
+            const today = now.toISOString().split('T')[0];
+
+            const record = {
+                date: today,
+                score: parseInt(document.getElementById('scoreSlider').value),
+                tinnitusVolume: tinnitusVolume,
+                tinnitusFreq: tinnitusFreq,
+                kneeClicks: counterValue,
+                notes: document.getElementById('notesInput').value,
+                timestamp: now.getTime()
+            };
+
+            saveRecord(record);
+            showToast('打卡保存成功！');
+            setTimeout(() => showPage('home'), 1000);
+        }
+
+        // 加载记录列表
+        function loadRecords() {
+            const records = getRecords();
+            const container = document.getElementById('recordsCard');
+
+            if (records.length === 0) {
+                container.innerHTML = `
+                    <div class="empty">
+                        <div class="empty-icon">📋</div>
+                        <div>还没有打卡记录</div>
+                        <div style="font-size: 12px; margin-top: 10px;">开始第一次打卡吧</div>
+                    </div>
+                `;
+                return;
+            }
+
+            const volumeOptions = ['无', '轻微', '中等', '严重'];
+            const freqOptions = ['无', '偶尔', '持续', '整夜'];
+
+            let html = '';
+            records.forEach(record => {
+                const date = new Date(record.date);
+                const month = date.getMonth() + 1;
+                const day = date.getDate();
+                const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+                const weekday = weekdays[date.getDay()];
+
+                html += `
+                    <div class="record-item" onclick="viewRecord('${record.date}')">
+                        <div class="record-date">${month}月${day}日 ${weekday}</div>
+                        <div class="record-score">清醒评分: ${record.score}</div>
+                        <div class="record-details">
+                            脑鸣: ${volumeOptions[record.tinnitusVolume]}(${freqOptions[record.tinnitusFreq]}) | 膝盖弹响: ${record.kneeClicks}次
+                        </div>
+                        ${record.notes ? `<div class="record-notes">${record.notes}</div>` : ''}
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // 查看记录详情
+        function viewRecord(date) {
+            const records = getRecords();
+            const record = records.find(r => r.date === date);
+            if (!record) return;
+
+            const volumeOptions = ['无', '轻微', '中等', '严重'];
+            const freqOptions = ['无', '偶尔', '持续', '整夜'];
+            const dateObj = new Date(record.date);
+            const dateStr = `${dateObj.getMonth() + 1}月${dateObj.getDate()}日`;
+
+            const content = `清醒评分: ${record.score}\n脑鸣音量: ${volumeOptions[record.tinnitusVolume]}\n脑鸣频率: ${freqOptions[record.tinnitusFreq]}\n膝盖弹响: ${record.kneeClicks}次\n${record.notes ? '备注: ' + record.notes : ''}`;
+
+            // 使用自定义弹窗
+            alert(dateStr + '\n\n' + content);
+        }
+
+        // 加载统计数据
+        function loadStats() {
+            const records = getRecords();
+
+            if (records.length === 0) {
+                document.getElementById('avgScore').textContent = '-';
+                document.getElementById('maxStreakDays').textContent = '0';
+                document.getElementById('totalDays').textContent = '0';
+                return;
+            }
+
+            // 计算平均清醒评分
+            const totalScore = records.reduce((sum, r) => sum + r.score, 0);
+            const avgScore = (totalScore / records.length).toFixed(1);
+
+            // 计算最长连续天数
+            let maxStreak = 0;
+            let currentStreak = 0;
+            const sortedRecords = [...records].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            for (let i = 0; i < sortedRecords.length; i++) {
+                if (i === 0) {
+                    currentStreak = 1;
+                } else {
+                    const prevDate = new Date(sortedRecords[i - 1].date);
+                    const currDate = new Date(sortedRecords[i].date);
+                    const diffDays = (currDate - prevDate) / (1000 * 60 * 60 * 24);
+
+                    if (diffDays === 1) {
+                        currentStreak++;
+                    } else {
+                        currentStreak = 1;
+                    }
+                }
+
+                if (currentStreak > maxStreak) {
+                    maxStreak = currentStreak;
+                }
+            }
+
+            document.getElementById('avgScore').textContent = avgScore;
+            document.getElementById('maxStreakDays').textContent = maxStreak;
+            document.getElementById('totalDays').textContent = records.length;
+
+            // 绘制图表
+            drawCharts(records.slice(0, 14).reverse());
+        }
+
+        // 绘制图表
+        function drawCharts(records) {
+            if (records.length === 0) return;
+
+            // 清空旧图表
+            const scoreChart = Chart.getChart('scoreChart');
+            const tinnitusChart = Chart.getChart('tinnitusChart');
+            if (scoreChart) scoreChart.destroy();
+            if (tinnitusChart) tinnitusChart.destroy();
+
+            // 准备数据
+            const labels = records.map(r => {
+                const date = new Date(r.date);
+                return `${date.getMonth() + 1}/${date.getDate()}`;
+            });
+            const scores = records.map(r => r.score);
+            const volumes = records.map(r => r.tinnitusVolume);
+
+            // 绘制清醒评分折线图
+            new Chart(document.getElementById('scoreChart'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '清醒评分',
+                        data: scores,
+                        borderColor: '#5B9BD5',
+                        backgroundColor: 'rgba(91, 155, 213, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            min: 1,
+                            max: 10,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+
+            // 绘制脑鸣趋势柱状图
+            new Chart(document.getElementById('tinnitusChart'), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '脑鸣音量',
+                        data: volumes,
+                        backgroundColor: volumes.map(v => {
+                            const colors = ['#70AD47', '#FFC000', '#FF5722', '#D32F2F'];
+                            return colors[v];
+                        })
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            min: 0,
+                            max: 3,
+                            ticks: {
+                                callback: function(value) {
+                                    return ['无', '轻微', '中等', '严重'][value];
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        // 加载个人中心
+        function loadProfile() {
+            const records = getRecords();
+            document.getElementById('profileDays').textContent = `坚持记录第 ${records.length} 天`;
+
+            const settings = getSettings();
+            document.getElementById('reminderSwitch').checked = settings.reminderEnabled !== false;
+        }
+
+        // 切换提醒开关
+        function toggleReminder() {
+            const enabled = document.getElementById('reminderSwitch').checked;
+            const settings = getSettings();
+            settings.reminderEnabled = enabled;
+            saveSettings(settings);
+            showToast(enabled ? '提醒已开启' : '提醒已关闭');
+        }
+
+        // 导出数据
+        function exportData() {
+            const records = getRecords();
+
+            if (records.length === 0) {
+                showToast('暂无数据可导出');
+                return;
+            }
+
+            // 生成 CSV 格式
+            let csv = '日期,清醒评分,脑鸣音量,脑鸣频率,膝盖弹响次数,备注\n';
+            const volumeOptions = ['无', '轻微', '中等', '严重'];
+            const freqOptions = ['无', '偶尔', '持续', '整夜'];
+
+            records.forEach(record => {
+                csv += `${record.date},${record.score},${volumeOptions[record.tinnitusVolume]},${freqOptions[record.tinnitusFreq]},${record.kneeClicks},"${record.notes || ''}"\n`;
+            });
+
+            // 创建 Blob 并下载
+            const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `康复追踪数据_${new Date().toISOString().split('T')[0]}.csv`;
+            link.click();
+
+            showToast('数据已导出');
+        }
+
+        // 显示关于信息
+        function showAbout() {
+            alert('康复追踪 v1.0\n\n基于《综合康复与系统优化方案》开发\n用于辅助康复习惯的养成和数据追踪\n\n数据保存在浏览器本地，请定期备份导出');
+        }
+
+        // Toast 提示
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2000);
+        }
+
+        // ============= 初始化 =============
+        document.addEventListener('DOMContentLoaded', function() {
+            updateCurrentDate();
+            loadHomePage();
+        });
+    </script>
+</body>
+</html>
